@@ -264,7 +264,6 @@ router.patch("/orders/bulk-status", validateBulkOrderUpdate, bulkUpdateOrderStat
  */
 router.get("/orders/export", exportOrders);
 
-// ! upload image
 /**
  * @swagger
  * /api/admin/upload:

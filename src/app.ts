@@ -6,12 +6,10 @@ import cookieParser from 'cookie-parser';
 import path from 'path';
 import fs from 'fs';
 
-// Import utilities
 import { logger } from './utils/logger';
 import { requestLogger } from './middlewares/requestLogger.middleware';
 import { setupSwagger } from './docs/swagger';
 
-// Import routes
 import productRoutes from './routes/products.route';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
@@ -19,43 +17,30 @@ import adminRoutes from './routes/admin.routes';
 import categoryRoutes from './routes/categories.routes';
 import healthRoutes from './routes/health.routes';
 
-// Create Express app
 const app: Application = express();
 
-// Create logs directory if it doesn't exist
-const logsDir = path.join(process.cwd(), 'logs');
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
+const isVercel = process.env.VERCEL === '1';
+if (!isVercel) {
+  const logsDir = path.join(process.cwd(), 'logs');
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
 }
 
-// Security middleware with CSP configured for Swagger UI
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], // Required for Swagger UI
-      styleSrc: ["'self'", "'unsafe-inline'"],  // Required for Swagger UI
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:"],
     },
   },
 }));
 
-// Enable CORS
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], // Required for Swagger UI
-      styleSrc: ["'self'", "'unsafe-inline'"],  // Required for Swagger UI
-      imgSrc: ["'self'", "data:"],
-    },
-  },
-}));
-
-// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.',
@@ -65,21 +50,16 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// Compression middleware
 app.use(compression());
 
-// Request logging middleware (after body parsing so we can log request bodies if needed)
 app.use(requestLogger);
 
-// Swagger documentation
 setupSwagger(app);
 
-// API routes
 app.use('/api/products', productRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
@@ -87,10 +67,6 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/health', healthRoutes);
 
-// Health check is now handled via the mounted healthRoutes at /api/health
-
-
-// 404 handler - catch-all for undefined routes
 app.use((req: Request, res: Response) => {
   res.status(404).json({
     success: false,
@@ -98,11 +74,9 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-// Global error handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   logger.error('Unhandled application error:', err);
 
-  // Log the error with context
   logger.error('Error context:', {
     url: _req.url,
     method: _req.method,
@@ -112,7 +86,6 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     stack: err.stack,
   });
 
-  // Send error response
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error',

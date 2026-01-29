@@ -141,7 +141,6 @@ router.put("/:id", authenticateToken, authorizeRoles("ADMIN"), validateIdParam, 
  */
 router.delete("/:id", authenticateToken, authorizeRoles("ADMIN"), validateIdParam, deleteCategory);
 
-
 /**
  * @swagger
  * components:

@@ -15,7 +15,6 @@ export const handleValidationErrors = (
   next();
 };
 
-// Auth validations
 export const validateRegister = [
   body("email")
     .isEmail()
@@ -50,7 +49,6 @@ export const validateLogin = [
   handleValidationErrors,
 ];
 
-// Product validations
 export const validateCreateProduct = [
   body("name")
     .trim()
@@ -101,7 +99,6 @@ export const validateUpdateProduct = [
   handleValidationErrors,
 ];
 
-// Category validations
 export const validateCreateCategory = [
   body("name")
     .trim()
@@ -130,7 +127,6 @@ export const validateUpdateCategory = [
   handleValidationErrors,
 ];
 
-// Pagination validations
 export const validatePagination = [
   query("page")
     .optional()
@@ -151,13 +147,11 @@ export const validatePagination = [
   handleValidationErrors,
 ];
 
-// ID parameter validation
 export const validateIdParam = [
   param("id").isInt({ min: 1 }).withMessage("Valid ID is required"),
   handleValidationErrors,
 ];
 
-// ! login identifier validation
 export const validateLoginIdentifier = [
   body("loginIdentifier")
     .trim()
@@ -166,7 +160,6 @@ export const validateLoginIdentifier = [
   handleValidationErrors,
 ];
 
-// ! password validation
 export const validatePassword = [
   body("password")
     .trim()
@@ -175,7 +168,6 @@ export const validatePassword = [
   handleValidationErrors,
 ];
 
-// Cart validations
 export const validateAddToCart = [
   body("productId")
     .isInt({ min: 1 })
@@ -195,7 +187,6 @@ export const validateUpdateCartItem = [
   handleValidationErrors,
 ];
 
-// Wishlist validations
 export const validateToggleWishlist = [
   body("productId")
     .isInt({ min: 1 })
@@ -203,7 +194,6 @@ export const validateToggleWishlist = [
   handleValidationErrors,
 ];
 
-// Order validations
 export const validateCreateOrder = [
   body("items")
     .isArray({ min: 1 })
@@ -238,7 +228,6 @@ export const validateConfirmDelivery = [
   handleValidationErrors,
 ];
 
-// User profile validations
 export const validateUpdateProfile = [
   body("username")
     .optional()
@@ -256,7 +245,6 @@ export const validateUpdateProfile = [
   handleValidationErrors,
 ];
 
-// Bulk order update validation
 export const validateBulkOrderUpdate = [
   body("orderIds")
     .isArray({ min: 1 })

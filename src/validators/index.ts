@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-// Product validation schemas
 export const createProductSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
   price: z.number().positive('Price must be positive'),
@@ -25,7 +24,6 @@ export const productIdSchema = z.object({
   id: z.string().regex(/^\d+$/, 'ID must be a numeric string').transform(Number),
 });
 
-// User validation schemas
 export const createUserSchema = z.object({
   email: z.string().email('Must be a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters long')
@@ -49,7 +47,6 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
-// Query parameters validation schemas
 export const paginationQuerySchema = z.object({
   page: z.string().regex(/^\d+$/).transform(Number).optional().default(1),
   limit: z.string().regex(/^\d+$/).transform(Number).optional().default(10),
@@ -57,7 +54,6 @@ export const paginationQuerySchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional(),
 });
 
-// Export all schemas
 export const schemas = {
   createProductSchema,
   updateProductSchema,

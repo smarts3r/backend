@@ -1,4 +1,4 @@
-// utils/addressFormatter.ts
+
 export const formatAddressToString = (
     address: any,
     phoneNumber: string
@@ -7,7 +7,6 @@ export const formatAddressToString = (
         return address;
     }
 
-    // NOTE: Format address to string
     const parts = [
         address.street,
         address.city,
@@ -20,7 +19,6 @@ export const formatAddressToString = (
     return parts.join(', ');
 };
 
-// NOTE: Or store as JSON for easier parsing later
 export const formatAddressToJSON = (
     address: any,
     phoneNumber: string

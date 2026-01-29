@@ -43,10 +43,8 @@ export class ProductService {
     try {
       const offset = (page - 1) * limit;
 
-      // Get total count
       const total = await prisma.product.count();
 
-      // Get products with pagination
       const products = await prisma.product.findMany({
         skip: offset,
         take: limit,

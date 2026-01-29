@@ -10,13 +10,13 @@ import { logger } from '../utils/logger';
 export const validate = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Validate request body by default
+
       const parsedData = schema.parse(req.body);
       req.body = parsedData;
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        // Format Zod errors for response
+
         const errors = error.issues.map((issue) => ({
           path: issue.path.join('.'),
           message: issue.message,

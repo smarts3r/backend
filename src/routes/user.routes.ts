@@ -1,7 +1,7 @@
-// routes/user.routes.ts
+
 import { Router } from "express";
 import {
-    // Order controllers
+
     getMyOrders,
     getMyOrderById,
     createOrder,
@@ -9,20 +9,16 @@ import {
     confirmDelivery,
     getOrderSummary,
 
-    // Product controllers
     getAvailableProducts,
     getProductById,
 
-    // User dashboard
     getUserProfile,
 
-    // Cart controllers
     getMyCart,
     addToCart,
     updateCartItem,
     clearCart,
 
-    // Wishlist controllers
     getMyWishlist,
     toggleWishlist
 } from "../controllers/user.controller";
@@ -36,12 +32,9 @@ import {
     validateToggleWishlist
 } from "@/middlewares/validationMiddleware";
 
-
 const router = Router();
 
-
 router.use(authenticateToken);
-
 
 /**
  * @swagger
@@ -564,7 +557,6 @@ router.get("/wishlist", getMyWishlist);
  *                   type: boolean
  */
 router.post("/wishlist/toggle", validateToggleWishlist, toggleWishlist);
-
 
 /**
  * @swagger

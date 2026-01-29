@@ -31,22 +31,18 @@ export const errorHandler = (
   let error = { ...err };
   error.message = err.message;
 
-  // Log error
   console.error(err);
 
-  // Prisma error handling
   if (err.name === "PrismaClientKnownRequestError") {
     const message = "Database operation failed";
     error = new CustomError(message, 400);
   }
 
-  // Prisma validation error
   if (err.name === "PrismaClientValidationError") {
     const message = "Invalid data provided";
     error = new CustomError(message, 400);
   }
 
-  // JWT error handling
   if (err.name === "JsonWebTokenError") {
     const message = "Invalid token";
     error = new CustomError(message, 401);
@@ -57,7 +53,6 @@ export const errorHandler = (
     error = new CustomError(message, 401);
   }
 
-  // Validation error handling
   if (err.name === "ValidationError") {
     const message = "Validation failed";
     error = new CustomError(message, 400);

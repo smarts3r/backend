@@ -1,22 +1,19 @@
-// controllers/user.controller.ts
+
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { OrderStatus } from "@prisma/client";
 
-// Helper to generate order number
 const generateOrderNumber = (): string => {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substr(2, 6).toUpperCase();
     return `ORD-${timestamp}-${random}`;
 };
 
-// Format address to string (handles both string and object inputs)
 const formatAddress = (address: any, phoneNumber: string): string => {
     if (typeof address === 'string') {
         return address;
     }
 
-    // If it's an object, format it nicely
     if (typeof address === 'object' && address !== null) {
         const parts = [
             address.street,
@@ -38,14 +35,12 @@ const formatAddress = (address: any, phoneNumber: string): string => {
         });
     }
 
-    // Fallback
     return JSON.stringify({
         raw: String(address),
         phone: phoneNumber
     });
 };
 
-// Parse address string back to object if possible
 const parseAddress = (addressString: string): any => {
     try {
         const parsed = JSON.parse(addressString);
@@ -54,8 +49,6 @@ const parseAddress = (addressString: string): any => {
         return addressString;
     }
 };
-
-// ==================== ORDER CONTROLLERS ====================
 
 export const getMyOrders = async (req: Request, res: Response) => {
     try {
@@ -107,10 +100,9 @@ export const getMyOrders = async (req: Request, res: Response) => {
             prisma.order.count({ where })
         ]);
 
-        // Parse addresses for each order
         const ordersWithParsedAddresses = orders.map(order => ({
             ...order,
-            // Don't include addresses in list view for performance
+
         }));
 
         return res.json({
@@ -187,7 +179,6 @@ export const getMyOrderById = async (req: Request, res: Response) => {
             });
         }
 
-        // Parse addresses
         const shippingAddress = parseAddress(order.shipping_address);
         const billingAddress = parseAddress(order.billing_address);
 
@@ -219,7 +210,6 @@ export const createOrder = async (req: Request, res: Response) => {
             phoneNumber
         } = req.body;
 
-        // ========== VALIDATION ==========
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({
                 success: false,
@@ -241,7 +231,6 @@ export const createOrder = async (req: Request, res: Response) => {
             });
         }
 
-        // Validate items structure
         for (const item of items) {
             if (!item.productId || !item.quantity || item.quantity < 1) {
                 return res.status(400).json({
@@ -251,9 +240,8 @@ export const createOrder = async (req: Request, res: Response) => {
             }
         }
 
-        // ========== TRANSACTION ==========
         const order = await prisma.$transaction(async (tx) => {
-            // 1. VALIDATE PRODUCTS & CALCULATE TOTAL
+
             let totalAmount = 0;
             const orderItems = [];
 
@@ -291,7 +279,6 @@ export const createOrder = async (req: Request, res: Response) => {
                     subtotal,
                 });
 
-                // Update stock
                 await tx.product.update({
                     where: { id: product.id },
                     data: {
@@ -301,16 +288,13 @@ export const createOrder = async (req: Request, res: Response) => {
                 });
             }
 
-            // 2. FORMAT ADDRESSES
             const shippingAddressString = formatAddress(shippingAddress, phoneNumber);
             const billingAddressString = billingAddress
                 ? formatAddress(billingAddress, phoneNumber)
                 : shippingAddressString;
 
-            // 3. GENERATE ORDER NUMBER
             const orderNumber = generateOrderNumber();
 
-            // 4. CREATE ORDER
             const newOrder = await tx.order.create({
                 data: {
                     user_id: userId,
@@ -345,10 +329,6 @@ export const createOrder = async (req: Request, res: Response) => {
             return newOrder;
         });
 
-        // ========== SUCCESS RESPONSE ==========
-        // TODO: Implement email/SMS notifications here
-        // await sendOrderConfirmation(userId, order);
-
         return res.status(201).json({
             success: true,
             message: "Order placed successfully. Pay on delivery.",
@@ -371,7 +351,6 @@ export const createOrder = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error("[createOrder] Error:", error);
 
-        // Specific error messages
         if (error.message.includes("not found") ||
             error.message.includes("stock") ||
             error.message.includes("unavailable")) {
@@ -400,12 +379,11 @@ export const cancelMyOrder = async (req: Request, res: Response) => {
             });
         }
 
-        // Check if order exists and belongs to user
         const order = await prisma.order.findFirst({
             where: {
                 id: orderId,
                 user_id: userId,
-                status: { in: ["PENDING", "PROCESSING"] } // Only cancellable before shipping
+                status: { in: ["PENDING", "PROCESSING"] }
             },
             include: {
                 orderItems: {
@@ -423,9 +401,8 @@ export const cancelMyOrder = async (req: Request, res: Response) => {
             });
         }
 
-        // Restock products and cancel order
         await prisma.$transaction(async (tx) => {
-            // Restock each product
+
             for (const item of order.orderItems) {
                 await tx.product.update({
                     where: { id: item.product_id },
@@ -436,7 +413,6 @@ export const cancelMyOrder = async (req: Request, res: Response) => {
                 });
             }
 
-            // Update order status
             await tx.order.update({
                 where: { id: orderId },
                 data: {
@@ -465,7 +441,7 @@ export const confirmDelivery = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user?.id;
         const orderId = Number(req.params.id);
-        const { paymentReceived = true } = req.body; // Optional: confirm payment was received
+        const { paymentReceived = true } = req.body;
 
         if (!orderId || isNaN(orderId)) {
             return res.status(400).json({
@@ -478,7 +454,7 @@ export const confirmDelivery = async (req: Request, res: Response) => {
             where: {
                 id: orderId,
                 user_id: userId,
-                status: "SHIPPED", // Can only confirm when shipped
+                status: "SHIPPED",
                 payment_method: "COD"
             }
         });
@@ -490,7 +466,6 @@ export const confirmDelivery = async (req: Request, res: Response) => {
             });
         }
 
-        // Update order status
         await prisma.order.update({
             where: { id: orderId },
             data: {
@@ -516,8 +491,6 @@ export const confirmDelivery = async (req: Request, res: Response) => {
     }
 };
 
-// ==================== PRODUCT CONTROLLERS ====================
-
 export const getAvailableProducts = async (req: Request, res: Response) => {
     try {
         const { page = "1", limit = "20", category, search, minPrice, maxPrice } = req.query;
@@ -530,14 +503,12 @@ export const getAvailableProducts = async (req: Request, res: Response) => {
             stock: { gt: 0 }
         };
 
-        // Category filter
         if (category && typeof category === "string") {
             where.category = {
                 name: category
             };
         }
 
-        // Search filter
         if (search && typeof search === "string") {
             where.OR = [
                 { name: { contains: search, mode: "insensitive" } },
@@ -547,7 +518,6 @@ export const getAvailableProducts = async (req: Request, res: Response) => {
             ];
         }
 
-        // Price range filter
         if (minPrice && !isNaN(Number(minPrice))) {
             where.price = { gte: Number(minPrice) };
         }
@@ -574,7 +544,6 @@ export const getAvailableProducts = async (req: Request, res: Response) => {
             prisma.product.count({ where })
         ]);
 
-        // Format response
         const formattedProducts = products.map(product => ({
             id: product.id,
             name: product.name,
@@ -638,7 +607,6 @@ export const getProductById = async (req: Request, res: Response) => {
             });
         }
 
-        // Check if product is available
         if (product.stock <= 0) {
             return res.status(400).json({
                 success: false,
@@ -667,14 +635,12 @@ export const getProductById = async (req: Request, res: Response) => {
     }
 };
 
-// ==================== USER DASHBOARD ====================
-
 export const getOrderSummary = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user?.id;
 
         const [summary, totalSpent, recentOrders] = await Promise.all([
-            // Orders by status
+
             prisma.order.groupBy({
                 by: ['status'],
                 where: { user_id: userId },
@@ -682,7 +648,6 @@ export const getOrderSummary = async (req: Request, res: Response) => {
                 _sum: { total_amount: true }
             }),
 
-            // Total spent on delivered orders
             prisma.order.aggregate({
                 where: {
                     user_id: userId,
@@ -691,7 +656,6 @@ export const getOrderSummary = async (req: Request, res: Response) => {
                 _sum: { total_amount: true }
             }),
 
-            // Recent orders (last 5)
             prisma.order.findMany({
                 where: { user_id: userId },
                 take: 5,
@@ -770,8 +734,6 @@ export const getUserProfile = async (req: Request, res: Response) => {
     }
 };
 
-// ==================== CART CONTROLLERS ====================
-
 export const getMyCart = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user?.id;
@@ -795,7 +757,6 @@ export const getMyCart = async (req: Request, res: Response) => {
             sum + (item.quantity * item.product.price), 0
         );
 
-        // Check stock availability
         const itemsWithAvailability = cartItems.map(item => ({
             ...item,
             available: item.product.stock >= item.quantity,
@@ -833,7 +794,6 @@ export const addToCart = async (req: Request, res: Response) => {
             });
         }
 
-        // Check product exists and has stock
         const product = await prisma.product.findUnique({
             where: { id: productId },
             select: {
@@ -857,10 +817,9 @@ export const addToCart = async (req: Request, res: Response) => {
             });
         }
 
-        // Upsert cart item
         const cartItem = await prisma.cart.upsert({
             where: {
-                //@ts-ignore
+
                 product_id_user_id: {
                     user_id: userId,
                     product_id: productId
@@ -917,7 +876,7 @@ export const updateCartItem = async (req: Request, res: Response) => {
         }
 
         if (quantity === 0) {
-            // Remove item if quantity is 0
+
             await prisma.cart.delete({
                 where: { id: itemId, user_id: userId }
             });
@@ -928,7 +887,6 @@ export const updateCartItem = async (req: Request, res: Response) => {
             });
         }
 
-        // Check stock
         const cartItem = await prisma.cart.findUnique({
             where: { id: itemId, user_id: userId },
             include: {
@@ -1008,8 +966,6 @@ export const clearCart = async (req: Request, res: Response) => {
     }
 };
 
-// ==================== WISHLIST CONTROLLERS ====================
-
 export const getMyWishlist = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user?.id;
@@ -1055,10 +1011,9 @@ export const toggleWishlist = async (req: Request, res: Response) => {
             });
         }
 
-        // Check if already in wishlist
         const existing = await prisma.wishlist.findUnique({
             where: {
-                //@ts-ignore
+
                 user_id_product_id: {
                     user_id: userId,
                     product_id: productId
@@ -1067,10 +1022,10 @@ export const toggleWishlist = async (req: Request, res: Response) => {
         });
 
         if (existing) {
-            // Remove from wishlist
+
             await prisma.wishlist.delete({
                 where: {
-                    //@ts-ignore
+
                     user_id_product_id: {
                         user_id: userId,
                         product_id: productId
@@ -1084,7 +1039,7 @@ export const toggleWishlist = async (req: Request, res: Response) => {
                 inWishlist: false
             });
         } else {
-            // Add to wishlist
+
             await prisma.wishlist.create({
                 data: {
                     user_id: userId,

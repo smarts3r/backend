@@ -2,8 +2,7 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import { Application } from 'express';
 
-// Swagger definition
-const options: swaggerJsdoc.Options = {
+export const options: swaggerJsdoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
@@ -75,95 +74,16 @@ const options: swaggerJsdoc.Options = {
       },
     },
   },
-  apis: ['./src/routes/*.ts', './src/docs/*.ts'], // Path to the API docs
+  apis: ['./src/routes/*.ts', './src/docs/*.ts'],
 };
 
 const specs = swaggerJsdoc(options);
 
 export const setupSwagger = (app: Application) => {
-  // Serve Swagger UI
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
-    explorer: true,
-    customCss: `
-      .topbar-wrapper img {
-        content: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggc3Ryb2tlPSJub25lIiBkPSJNMCAwaDI0djI0SDB6Ii8+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4eiIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTEiIHI9IjEiLz48cGF0aCBkPSJNOC41IDE2LjVoN2MtLjQzLTIuMTgtLjIzLTQuNS0uMi02LjVoLTcuMmMtLjAzIDIuNS0uMjMgNC43Mi4yIDYuNXoiLz48L3N2Zz4=');
-        height: 80px;
-        width: 80px;
-      }
-      .swagger-ui .topbar { background-color: #2c3e50; }
-    `,
-  }));
-  
+  app.use('/', swaggerUi.serve, swaggerUi.setup(specs, { explorer: true }));
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, { explorer: true }));
   return specs;
 };
-
-// Example JSDoc template for routes
-/**
- * @swagger
- * tags:
- *   name: Products
- *   description: Product management
- */
-
-/**
- * @swagger
- * /api/products:
- *   get:
- *     summary: Get all products
- *     tags: [Products]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           minimum: 1
- *           maximum: 100
- *           default: 10
- *         description: Maximum number of products to return
- *       - in: query
- *         name: offset
- *         schema:
- *           type: integer
- *           default: 0
- *         description: Number of products to skip
- *     responses:
- *       200:
- *         description: List of products
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Product'
- *                 pagination:
- *                   $ref: '#/components/schemas/Pagination'
- *       400:
- *         description: Bad request
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ValidationError'
- *       401:
- *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- */
 
 /**
  * @swagger
@@ -266,7 +186,6 @@ export const setupSwagger = (app: Application) => {
  *               $ref: '#/components/schemas/Error'
  */
 
-// Define reusable schemas
 /**
  * @swagger
  * components:
