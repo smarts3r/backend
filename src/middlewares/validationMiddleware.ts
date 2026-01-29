@@ -40,10 +40,12 @@ export const validateRegister = [
 ];
 
 export const validateLogin = [
-  body("email")
-    .isEmail()
-    .normalizeEmail()
-    .withMessage("Valid email is required"),
+  body().custom((value) => {
+    if (!value.email && !value.username && !value.loginIdentifier) {
+      throw new Error("Email, username, or loginIdentifier is required");
+    }
+    return true;
+  }),
   body("password").notEmpty().withMessage("Password is required"),
   handleValidationErrors,
 ];

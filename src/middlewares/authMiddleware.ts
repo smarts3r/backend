@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { User } from "../types";
-import prisma from "@/src/lib/prisma";
+import prisma from "@/lib/prisma";
 import { getSession, setSession } from "../services/sessionCache";
 import { ACCESS_TOKEN_SECRET, verifyToken } from "../utils/authUtilities";
 

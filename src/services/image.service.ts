@@ -16,7 +16,7 @@ if (process.env.CLOUDINARY_URL) {
   });
 }
 
-export const uploadImage = (fileBuffer) => {
+export const uploadImage = (fileBuffer: Buffer) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {

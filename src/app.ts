@@ -1,5 +1,4 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
-import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
@@ -14,6 +13,11 @@ import { setupSwagger } from './docs/swagger';
 
 // Import routes
 import productRoutes from './routes/products.route';
+import authRoutes from './routes/auth.routes';
+import userRoutes from './routes/user.routes';
+import adminRoutes from './routes/admin.routes';
+import categoryRoutes from './routes/categories.routes';
+import healthRoutes from './routes/health.routes';
 
 // Create Express app
 const app: Application = express();
@@ -24,13 +28,28 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
-// Security middleware
-app.use(helmet());
+// Security middleware with CSP configured for Swagger UI
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // Required for Swagger UI
+      styleSrc: ["'self'", "'unsafe-inline'"],  // Required for Swagger UI
+      imgSrc: ["'self'", "data:"],
+    },
+  },
+}));
 
 // Enable CORS
-app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
-  credentials: true,
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // Required for Swagger UI
+      styleSrc: ["'self'", "'unsafe-inline'"],  // Required for Swagger UI
+      imgSrc: ["'self'", "data:"],
+    },
+  },
 }));
 
 // Rate limiting
@@ -62,16 +81,14 @@ setupSwagger(app);
 
 // API routes
 app.use('/api/products', productRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/health', healthRoutes);
 
-// Health check endpoint
-app.get('/health', (_req: Request, res: Response) => {
-  res.status(200).json({
-    success: true,
-    message: 'Server is running',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  });
-});
+// Health check is now handled via the mounted healthRoutes at /api/health
+
 
 // 404 handler - catch-all for undefined routes
 app.use((req: Request, res: Response) => {

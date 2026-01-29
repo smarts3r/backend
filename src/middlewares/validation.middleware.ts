@@ -90,7 +90,12 @@ export const validateQuery = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsedData = schema.parse(req.query);
-      req.query = parsedData as Record<string, string>;
+      Object.defineProperty(req, 'query', {
+        value: parsedData,
+        writable: true,
+        configurable: true,
+        enumerable: true
+      });
       next();
     } catch (error) {
       if (error instanceof ZodError) {
@@ -127,7 +132,12 @@ export const validateParams = (schema: ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsedData = schema.parse(req.params);
-      req.params = parsedData as Record<string, string>;
+      Object.defineProperty(req, 'params', {
+        value: parsedData,
+        writable: true,
+        configurable: true,
+        enumerable: true
+      });
       next();
     } catch (error) {
       if (error instanceof ZodError) {

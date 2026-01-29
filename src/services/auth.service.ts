@@ -67,8 +67,8 @@ export class AuthService {
         password: hashedPassword,
         role:
           role &&
-          typeof role === "string" &&
-          Object.values(Role).includes(role as Role)
+            typeof role === "string" &&
+            Object.values(Role).includes(role as Role)
             ? (role as Role)
             : Role.USER,
       },
@@ -82,8 +82,9 @@ export class AuthService {
     };
   }
 
-  async loginUser(credentials: LoginCredentials) {
-    const { loginIdentifier, password } = credentials;
+  async loginUser(credentials: LoginCredentials & { email?: string; username?: string }) {
+    const loginIdentifier = credentials.loginIdentifier || credentials.email || credentials.username;
+    const { password } = credentials;
 
     if (!loginIdentifier || !password) {
       throw new Error("Username/Email and password are required");
