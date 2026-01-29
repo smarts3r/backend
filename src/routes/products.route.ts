@@ -221,7 +221,7 @@ router.post('/', validateBody(schemas.createProductSchema), async (req: Request,
  *                 example: 1
  *               img:
  *                 type: string
- *                 example: "https:
+ *                 example: "https://example.com/image.jpg"
  *               stock:
  *                 type: integer
  *                 example: 15

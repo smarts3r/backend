@@ -80,8 +80,16 @@ export const options: swaggerJsdoc.Options = {
 const specs = swaggerJsdoc(options);
 
 export const setupSwagger = (app: Application) => {
-  app.use('/', swaggerUi.serve, swaggerUi.setup(specs, { explorer: true }));
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, { explorer: true }));
+  const swaggerUIOptions = {
+    explorer: true,
+  };
+
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, swaggerUIOptions));
+
+  app.get('/', (_req, res) => {
+    res.redirect('/api-docs/');
+  });
+
   return specs;
 };
 
