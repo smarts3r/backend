@@ -1,0 +1,1109 @@
+// controllers/user.controller.ts
+import type { Request, Response } from "express";
+import { prisma } from "../lib/prisma";
+import { OrderStatus } from "@prisma/client";
+
+// Helper to generate order number
+const generateOrderNumber = (): string => {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substr(2, 6).toUpperCase();
+    return `ORD-${timestamp}-${random}`;
+};
+
+// Format address to string (handles both string and object inputs)
+const formatAddress = (address: any, phoneNumber: string): string => {
+    if (typeof address === 'string') {
+        return address;
+    }
+
+    // If it's an object, format it nicely
+    if (typeof address === 'object' && address !== null) {
+        const parts = [
+            address.street,
+            address.city,
+            address.state,
+            address.zip_code,
+            address.country
+        ].filter(Boolean);
+
+        const addressString = parts.join(', ');
+        return JSON.stringify({
+            formatted: addressString,
+            street: address.street || '',
+            city: address.city || '',
+            state: address.state || '',
+            zip_code: address.zip_code || '',
+            country: address.country || '',
+            phone: phoneNumber
+        });
+    }
+
+    // Fallback
+    return JSON.stringify({
+        raw: String(address),
+        phone: phoneNumber
+    });
+};
+
+// Parse address string back to object if possible
+const parseAddress = (addressString: string): any => {
+    try {
+        const parsed = JSON.parse(addressString);
+        return parsed;
+    } catch {
+        return addressString;
+    }
+};
+
+// ==================== ORDER CONTROLLERS ====================
+
+export const getMyOrders = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+        const { page = "1", limit = "10", status } = req.query;
+
+        const pageNum = Math.max(1, Number(page));
+        const take = Math.min(50, Math.max(1, Number(limit)));
+        const skip = (pageNum - 1) * take;
+
+        const where: any = { user_id: userId };
+
+        if (status && Object.values(OrderStatus).includes(status as OrderStatus)) {
+            where.status = status;
+        }
+
+        const [orders, total] = await Promise.all([
+            prisma.order.findMany({
+                where,
+                take,
+                skip,
+                orderBy: { created_at: "desc" },
+                select: {
+                    id: true,
+                    order_number: true,
+                    total_amount: true,
+                    status: true,
+                    payment_status: true,
+                    payment_method: true,
+                    created_at: true,
+                    cancelled_at: true,
+                    orderItems: {
+                        select: {
+                            id: true,
+                            quantity: true,
+                            unit_price: true,
+                            subtotal: true,
+                            product: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    img: true,
+                                }
+                            }
+                        }
+                    }
+                }
+            }),
+            prisma.order.count({ where })
+        ]);
+
+        // Parse addresses for each order
+        const ordersWithParsedAddresses = orders.map(order => ({
+            ...order,
+            // Don't include addresses in list view for performance
+        }));
+
+        return res.json({
+            success: true,
+            data: ordersWithParsedAddresses,
+            pagination: {
+                page: pageNum,
+                limit: take,
+                total,
+                totalPages: Math.ceil(total / take),
+            }
+        });
+    } catch (error) {
+        console.error("[getMyOrders] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch your orders"
+        });
+    }
+};
+
+export const getMyOrderById = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+        const orderId = Number(req.params.id);
+
+        if (!orderId || isNaN(orderId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid order ID"
+            });
+        }
+
+        const order = await prisma.order.findFirst({
+            where: {
+                id: orderId,
+                user_id: userId
+            },
+            include: {
+                orderItems: {
+                    include: {
+                        product: {
+                            select: {
+                                id: true,
+                                name: true,
+                                img: true,
+                                sku: true,
+                                price: true,
+                                description: true,
+                            }
+                        }
+                    }
+                },
+                user: {
+                    select: {
+                        email: true,
+                        username: true,
+                        profile: {
+                            select: {
+                                first_name: true,
+                                last_name: true,
+                                phone: true,
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: "Order not found"
+            });
+        }
+
+        // Parse addresses
+        const shippingAddress = parseAddress(order.shipping_address);
+        const billingAddress = parseAddress(order.billing_address);
+
+        return res.json({
+            success: true,
+            data: {
+                ...order,
+                shipping_address: shippingAddress,
+                billing_address: billingAddress
+            }
+        });
+    } catch (error) {
+        console.error("[getMyOrderById] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch order details"
+        });
+    }
+};
+
+export const createOrder = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+        const {
+            items,
+            shippingAddress,
+            billingAddress,
+            notes,
+            phoneNumber
+        } = req.body;
+
+        // ========== VALIDATION ==========
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Order items are required"
+            });
+        }
+
+        if (!shippingAddress || !phoneNumber) {
+            return res.status(400).json({
+                success: false,
+                message: "Shipping address and phone number are required"
+            });
+        }
+
+        if (typeof phoneNumber !== 'string' || phoneNumber.trim().length < 8) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid phone number is required"
+            });
+        }
+
+        // Validate items structure
+        for (const item of items) {
+            if (!item.productId || !item.quantity || item.quantity < 1) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Each item must have productId and quantity (min 1)"
+                });
+            }
+        }
+
+        // ========== TRANSACTION ==========
+        const order = await prisma.$transaction(async (tx) => {
+            // 1. VALIDATE PRODUCTS & CALCULATE TOTAL
+            let totalAmount = 0;
+            const orderItems = [];
+
+            for (const item of items) {
+                const product = await tx.product.findUnique({
+                    where: { id: item.productId },
+                    select: {
+                        id: true,
+                        price: true,
+                        stock: true,
+                        name: true,
+                        is_available: true,
+                    }
+                });
+
+                if (!product) {
+                    throw new Error(`Product ${item.productId} not found`);
+                }
+
+                if (!product.is_available) {
+                    throw new Error(`Product "${product.name}" is currently unavailable`);
+                }
+
+                if (product.stock < item.quantity) {
+                    throw new Error(`Insufficient stock for "${product.name}". Available: ${product.stock}`);
+                }
+
+                const subtotal = product.price * item.quantity;
+                totalAmount += subtotal;
+
+                orderItems.push({
+                    product_id: product.id,
+                    quantity: item.quantity,
+                    unit_price: product.price,
+                    subtotal,
+                });
+
+                // Update stock
+                await tx.product.update({
+                    where: { id: product.id },
+                    data: {
+                        stock: product.stock - item.quantity,
+                        updated_at: new Date()
+                    }
+                });
+            }
+
+            // 2. FORMAT ADDRESSES
+            const shippingAddressString = formatAddress(shippingAddress, phoneNumber);
+            const billingAddressString = billingAddress
+                ? formatAddress(billingAddress, phoneNumber)
+                : shippingAddressString;
+
+            // 3. GENERATE ORDER NUMBER
+            const orderNumber = generateOrderNumber();
+
+            // 4. CREATE ORDER
+            const newOrder = await tx.order.create({
+                data: {
+                    user_id: userId,
+                    order_number: orderNumber,
+                    total_amount: totalAmount,
+                    shipping_address: shippingAddressString,
+                    billing_address: billingAddressString,
+                    payment_method: "COD",
+                    payment_status: "pending",
+                    status: "PENDING",
+                    notes: notes || null,
+                    orderItems: {
+                        create: orderItems
+                    }
+                },
+                include: {
+                    orderItems: {
+                        include: {
+                            product: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    img: true,
+                                    price: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            return newOrder;
+        });
+
+        // ========== SUCCESS RESPONSE ==========
+        // TODO: Implement email/SMS notifications here
+        // await sendOrderConfirmation(userId, order);
+
+        return res.status(201).json({
+            success: true,
+            message: "Order placed successfully. Pay on delivery.",
+            data: {
+                orderId: order.id,
+                orderNumber: order.order_number,
+                totalAmount: order.total_amount,
+                paymentMethod: "Cash on Delivery",
+                status: order.status,
+                estimatedDelivery: "3-5 business days",
+                items: order.orderItems.map(item => ({
+                    product: item.product,
+                    quantity: item.quantity,
+                    unitPrice: item.unit_price,
+                    subtotal: item.subtotal
+                }))
+            }
+        });
+
+    } catch (error: any) {
+        console.error("[createOrder] Error:", error);
+
+        // Specific error messages
+        if (error.message.includes("not found") ||
+            error.message.includes("stock") ||
+            error.message.includes("unavailable")) {
+            return res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to place order. Please try again."
+        });
+    }
+};
+
+export const cancelMyOrder = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+        const orderId = Number(req.params.id);
+
+        if (!orderId || isNaN(orderId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid order ID"
+            });
+        }
+
+        // Check if order exists and belongs to user
+        const order = await prisma.order.findFirst({
+            where: {
+                id: orderId,
+                user_id: userId,
+                status: { in: ["PENDING", "PROCESSING"] } // Only cancellable before shipping
+            },
+            include: {
+                orderItems: {
+                    include: {
+                        product: true
+                    }
+                }
+            }
+        });
+
+        if (!order) {
+            return res.status(400).json({
+                success: false,
+                message: "Order cannot be cancelled (already shipped, delivered, or not found)"
+            });
+        }
+
+        // Restock products and cancel order
+        await prisma.$transaction(async (tx) => {
+            // Restock each product
+            for (const item of order.orderItems) {
+                await tx.product.update({
+                    where: { id: item.product_id },
+                    data: {
+                        stock: item.product.stock + item.quantity,
+                        updated_at: new Date()
+                    }
+                });
+            }
+
+            // Update order status
+            await tx.order.update({
+                where: { id: orderId },
+                data: {
+                    status: "CANCELLED",
+                    cancelled_at: new Date(),
+                    updated_at: new Date()
+                }
+            });
+        });
+
+        return res.json({
+            success: true,
+            message: "Order cancelled successfully. Items have been restocked."
+        });
+
+    } catch (error) {
+        console.error("[cancelMyOrder] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to cancel order"
+        });
+    }
+};
+
+export const confirmDelivery = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+        const orderId = Number(req.params.id);
+        const { paymentReceived = true } = req.body; // Optional: confirm payment was received
+
+        if (!orderId || isNaN(orderId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid order ID"
+            });
+        }
+
+        const order = await prisma.order.findFirst({
+            where: {
+                id: orderId,
+                user_id: userId,
+                status: "SHIPPED", // Can only confirm when shipped
+                payment_method: "COD"
+            }
+        });
+
+        if (!order) {
+            return res.status(400).json({
+                success: false,
+                message: "Order not found or cannot be confirmed for delivery"
+            });
+        }
+
+        // Update order status
+        await prisma.order.update({
+            where: { id: orderId },
+            data: {
+                status: "DELIVERED",
+                payment_status: paymentReceived ? "paid" : "pending",
+                updated_at: new Date()
+            }
+        });
+
+        return res.json({
+            success: true,
+            message: paymentReceived
+                ? "Delivery confirmed. Payment marked as received."
+                : "Delivery confirmed. Payment pending."
+        });
+
+    } catch (error) {
+        console.error("[confirmDelivery] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to confirm delivery"
+        });
+    }
+};
+
+// ==================== PRODUCT CONTROLLERS ====================
+
+export const getAvailableProducts = async (req: Request, res: Response) => {
+    try {
+        const { page = "1", limit = "20", category, search, minPrice, maxPrice } = req.query;
+
+        const pageNum = Math.max(1, Number(page));
+        const take = Math.min(100, Math.max(1, Number(limit)));
+        const skip = (pageNum - 1) * take;
+
+        const where: any = {
+            stock: { gt: 0 }
+        };
+
+        // Category filter
+        if (category && typeof category === "string") {
+            where.category = {
+                name: category
+            };
+        }
+
+        // Search filter
+        if (search && typeof search === "string") {
+            where.OR = [
+                { name: { contains: search, mode: "insensitive" } },
+                { description: { contains: search, mode: "insensitive" } },
+                { sku: { contains: search, mode: "insensitive" } },
+                { category: { name: { contains: search, mode: "insensitive" } } }
+            ];
+        }
+
+        // Price range filter
+        if (minPrice && !isNaN(Number(minPrice))) {
+            where.price = { gte: Number(minPrice) };
+        }
+
+        if (maxPrice && !isNaN(Number(maxPrice))) {
+            where.price = { ...where.price, lte: Number(maxPrice) };
+        }
+
+        const [products, total] = await Promise.all([
+            prisma.product.findMany({
+                where,
+                take,
+                skip,
+                orderBy: { created_at: "desc" },
+                include: {
+                    category: {
+                        select: {
+                            id: true,
+                            name: true
+                        }
+                    }
+                }
+            }),
+            prisma.product.count({ where })
+        ]);
+
+        // Format response
+        const formattedProducts = products.map(product => ({
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            oldPrice: product.old_price,
+            img: product.img,
+            sku: product.sku,
+            stock: product.stock,
+            category: product.category,
+            createdAt: product.created_at
+        }));
+
+        return res.json({
+            success: true,
+            data: formattedProducts,
+            pagination: {
+                page: pageNum,
+                limit: take,
+                total,
+                totalPages: Math.ceil(total / take),
+            }
+        });
+
+    } catch (error) {
+        console.error("[getAvailableProducts] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch products"
+        });
+    }
+};
+
+export const getProductById = async (req: Request, res: Response) => {
+    try {
+        const productId = Number(req.params.id);
+
+        if (!productId || isNaN(productId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid product ID"
+            });
+        }
+
+        const product = await prisma.product.findUnique({
+            where: { id: productId },
+            include: {
+                category: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                }
+            }
+        });
+
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: "Product not found"
+            });
+        }
+
+        // Check if product is available
+        if (product.stock <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Product is out of stock",
+                data: {
+                    ...product,
+                    available: false
+                }
+            });
+        }
+
+        return res.json({
+            success: true,
+            data: {
+                ...product,
+                available: product.stock > 0
+            }
+        });
+
+    } catch (error) {
+        console.error("[getProductById] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch product details"
+        });
+    }
+};
+
+// ==================== USER DASHBOARD ====================
+
+export const getOrderSummary = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+
+        const [summary, totalSpent, recentOrders] = await Promise.all([
+            // Orders by status
+            prisma.order.groupBy({
+                by: ['status'],
+                where: { user_id: userId },
+                _count: { id: true },
+                _sum: { total_amount: true }
+            }),
+
+            // Total spent on delivered orders
+            prisma.order.aggregate({
+                where: {
+                    user_id: userId,
+                    status: "DELIVERED"
+                },
+                _sum: { total_amount: true }
+            }),
+
+            // Recent orders (last 5)
+            prisma.order.findMany({
+                where: { user_id: userId },
+                take: 5,
+                orderBy: { created_at: "desc" },
+                select: {
+                    id: true,
+                    order_number: true,
+                    total_amount: true,
+                    status: true,
+                    created_at: true
+                }
+            })
+        ]);
+
+        return res.json({
+            success: true,
+            data: {
+                byStatus: summary,
+                totalOrders: summary.reduce((sum, item) => sum + item._count.id, 0),
+                totalSpent: totalSpent._sum.total_amount || 0,
+                recentOrders,
+                codOrders: summary.find(item => item.status === "DELIVERED")?._count.id || 0
+            }
+        });
+
+    } catch (error) {
+        console.error("[getOrderSummary] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch order summary"
+        });
+    }
+};
+
+export const getUserProfile = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                role: true,
+                created_at: true,
+                profile: true,
+                _count: {
+                    select: {
+                        orders: true,
+                        cart: true,
+                        wishlist: true
+                    }
+                }
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        return res.json({
+            success: true,
+            data: user
+        });
+
+    } catch (error) {
+        console.error("[getUserProfile] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch user profile"
+        });
+    }
+};
+
+// ==================== CART CONTROLLERS ====================
+
+export const getMyCart = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+
+        const cartItems = await prisma.cart.findMany({
+            where: { user_id: userId },
+            include: {
+                product: {
+                    select: {
+                        id: true,
+                        name: true,
+                        img: true,
+                        price: true,
+                        stock: true,
+                    }
+                }
+            }
+        });
+
+        const total = cartItems.reduce((sum, item) =>
+            sum + (item.quantity * item.product.price), 0
+        );
+
+        // Check stock availability
+        const itemsWithAvailability = cartItems.map(item => ({
+            ...item,
+            available: item.product.stock >= item.quantity,
+            maxQuantity: item.product.stock
+        }));
+
+        return res.json({
+            success: true,
+            data: {
+                items: itemsWithAvailability,
+                total,
+                itemCount: cartItems.length,
+                allAvailable: itemsWithAvailability.every(item => item.available)
+            }
+        });
+
+    } catch (error) {
+        console.error("[getMyCart] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch cart"
+        });
+    }
+};
+
+export const addToCart = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+        const { productId, quantity = 1 } = req.body;
+
+        if (!productId || quantity < 1) {
+            return res.status(400).json({
+                success: false,
+                message: "Product ID and valid quantity are required"
+            });
+        }
+
+        // Check product exists and has stock
+        const product = await prisma.product.findUnique({
+            where: { id: productId },
+            select: {
+                id: true,
+                stock: true,
+                name: true
+            }
+        });
+
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: "Product not found"
+            });
+        }
+
+        if (product.stock < quantity) {
+            return res.status(400).json({
+                success: false,
+                message: `Insufficient stock. Available: ${product.stock}`
+            });
+        }
+
+        // Upsert cart item
+        const cartItem = await prisma.cart.upsert({
+            where: {
+                //@ts-ignore
+                product_id_user_id: {
+                    user_id: userId,
+                    product_id: productId
+                }
+            },
+            update: {
+                quantity: {
+                    increment: quantity
+                },
+                updated_at: new Date()
+            },
+            create: {
+                user_id: userId,
+                product_id: productId,
+                quantity: quantity
+            },
+            include: {
+                product: {
+                    select: {
+                        name: true,
+                        img: true,
+                        price: true
+                    }
+                }
+            }
+        });
+
+        return res.json({
+            success: true,
+            message: "Added to cart",
+            data: cartItem
+        });
+
+    } catch (error) {
+        console.error("[addToCart] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to add to cart"
+        });
+    }
+};
+
+export const updateCartItem = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+        const itemId = Number(req.params.id);
+        const { quantity } = req.body;
+
+        if (!itemId || isNaN(itemId) || quantity === undefined || quantity < 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid item ID and quantity are required"
+            });
+        }
+
+        if (quantity === 0) {
+            // Remove item if quantity is 0
+            await prisma.cart.delete({
+                where: { id: itemId, user_id: userId }
+            });
+
+            return res.json({
+                success: true,
+                message: "Item removed from cart"
+            });
+        }
+
+        // Check stock
+        const cartItem = await prisma.cart.findUnique({
+            where: { id: itemId, user_id: userId },
+            include: {
+                product: {
+                    select: {
+                        stock: true
+                    }
+                }
+            }
+        });
+
+        if (!cartItem) {
+            return res.status(404).json({
+                success: false,
+                message: "Cart item not found"
+            });
+        }
+
+        if (cartItem.product.stock < quantity) {
+            return res.status(400).json({
+                success: false,
+                message: `Insufficient stock. Available: ${cartItem.product.stock}`
+            });
+        }
+
+        const updatedItem = await prisma.cart.update({
+            where: { id: itemId, user_id: userId },
+            data: {
+                quantity: quantity,
+                updated_at: new Date()
+            },
+            include: {
+                product: {
+                    select: {
+                        name: true,
+                        img: true,
+                        price: true
+                    }
+                }
+            }
+        });
+
+        return res.json({
+            success: true,
+            message: "Cart updated",
+            data: updatedItem
+        });
+
+    } catch (error) {
+        console.error("[updateCartItem] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update cart"
+        });
+    }
+};
+
+export const clearCart = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+
+        await prisma.cart.deleteMany({
+            where: { user_id: userId }
+        });
+
+        return res.json({
+            success: true,
+            message: "Cart cleared"
+        });
+
+    } catch (error) {
+        console.error("[clearCart] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to clear cart"
+        });
+    }
+};
+
+// ==================== WISHLIST CONTROLLERS ====================
+
+export const getMyWishlist = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+
+        const wishlistItems = await prisma.wishlist.findMany({
+            where: { user_id: userId },
+            include: {
+                product: {
+                    select: {
+                        id: true,
+                        name: true,
+                        img: true,
+                        price: true,
+                        stock: true,
+                    }
+                }
+            }
+        });
+
+        return res.json({
+            success: true,
+            data: wishlistItems
+        });
+
+    } catch (error) {
+        console.error("[getMyWishlist] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch wishlist"
+        });
+    }
+};
+
+export const toggleWishlist = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+        const { productId } = req.body;
+
+        if (!productId) {
+            return res.status(400).json({
+                success: false,
+                message: "Product ID is required"
+            });
+        }
+
+        // Check if already in wishlist
+        const existing = await prisma.wishlist.findUnique({
+            where: {
+                //@ts-ignore
+                user_id_product_id: {
+                    user_id: userId,
+                    product_id: productId
+                }
+            }
+        });
+
+        if (existing) {
+            // Remove from wishlist
+            await prisma.wishlist.delete({
+                where: {
+                    //@ts-ignore
+                    user_id_product_id: {
+                        user_id: userId,
+                        product_id: productId
+                    }
+                }
+            });
+
+            return res.json({
+                success: true,
+                message: "Removed from wishlist",
+                inWishlist: false
+            });
+        } else {
+            // Add to wishlist
+            await prisma.wishlist.create({
+                data: {
+                    user_id: userId,
+                    product_id: productId
+                }
+            });
+
+            return res.json({
+                success: true,
+                message: "Added to wishlist",
+                inWishlist: true
+            });
+        }
+
+    } catch (error) {
+        console.error("[toggleWishlist] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update wishlist"
+        });
+    }
+};
