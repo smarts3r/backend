@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { validateBody, validateParams, validateQuery } from '../middleware/validation.middleware';
+import { validateBody, validateParams, validateQuery } from '../middlewares/validation.middleware';
 import { schemas } from '../validators';
 import { logger } from '../utils/logger';
 import { ProductService } from '../services/product.service';
@@ -117,14 +117,14 @@ router.get('/:id', validateParams(schemas.productIdSchema), async (req: Request,
     const productId = parseInt(Array.isArray(id) ? id[0] : id, 10);
 
     const product = await productService.getProductById(productId);
-    
+
     if (!product) {
       return res.status(404).json({
         success: false,
         message: 'Product not found',
       });
     }
-    
+
     res.json({
       success: true,
       data: product,
@@ -169,9 +169,9 @@ router.get('/:id', validateParams(schemas.productIdSchema), async (req: Request,
 router.post('/', validateBody(schemas.createProductSchema), async (req: Request, res: Response) => {
   try {
     const productData = req.body;
-    
+
     const newProduct = await productService.createProduct(productData);
-    
+
     res.status(201).json({
       success: true,
       data: newProduct,
@@ -242,17 +242,17 @@ router.post('/', validateBody(schemas.createProductSchema), async (req: Request,
  *                 data:
  *                   $ref: '#/components/schemas/Product'
  */
-router.put('/:id', 
-  validateParams(schemas.productIdSchema), 
-  validateBody(schemas.updateProductSchema), 
+router.put('/:id',
+  validateParams(schemas.productIdSchema),
+  validateBody(schemas.updateProductSchema),
   async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const productId = parseInt(Array.isArray(id) ? id[0] : id, 10);
       const productData = req.body;
-      
+
       const updatedProduct = await productService.updateProduct(productId, productData);
-      
+
       res.json({
         success: true,
         data: updatedProduct,
@@ -302,7 +302,7 @@ router.delete('/:id', validateParams(schemas.productIdSchema), async (req: Reque
     const productId = parseInt(Array.isArray(id) ? id[0] : id, 10);
 
     await productService.deleteProduct(productId);
-    
+
     res.json({
       success: true,
       message: 'Product deleted successfully',

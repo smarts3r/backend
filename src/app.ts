@@ -9,7 +9,7 @@ import fs from 'fs';
 
 // Import utilities
 import { logger } from './utils/logger';
-import { requestLogger } from './middleware/requestLogger.middleware';
+import { requestLogger } from './middlewares/requestLogger.middleware';
 import { setupSwagger } from './docs/swagger';
 
 // Import routes
@@ -64,7 +64,7 @@ setupSwagger(app);
 app.use('/api/products', productRoutes);
 
 // Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: 'Server is running',

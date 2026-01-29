@@ -9,7 +9,7 @@ import {
 import {
   authenticateToken,
   authorizeRoles,
-} from "@/middlewares/authMiddleware.ts";
+} from "@/middlewares/authMiddleware";
 
 const router = express.Router();
 
