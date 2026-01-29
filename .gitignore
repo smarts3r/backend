@@ -4,3 +4,4 @@ logs/
 .agent/
 .vscode/
 .idea/
+dist/

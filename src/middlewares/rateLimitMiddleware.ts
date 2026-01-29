@@ -1,4 +1,3 @@
-import type { Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 
 // General API rate limiting
