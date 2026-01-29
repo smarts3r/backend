@@ -1,17 +1,15 @@
 {
     "version": 2,
-    "functions": {
-        "api/index.ts": {
-            "runtime": "@vercel/node@20.x"
+    "builds": [
+        {
+            "src": "src/index.ts",
+            "use": "@vercel/node"
         }
-    },
+    ],
     "routes": [
         {
             "src": "/(.*)",
-            "dest": "api/index.ts"
+            "dest": "src/index.ts"
         }
-    ],
-    "env": {
-        "NODE_ENV": "production"
-    }
+    ]
 }
