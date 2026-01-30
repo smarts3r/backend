@@ -5,3 +5,5 @@ logs/
 .vscode/
 .idea/
 dist/
+.vercel
+.env*.local
