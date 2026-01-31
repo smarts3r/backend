@@ -3,9 +3,26 @@ import { AdminService } from "../services/admin.service";
 
 const adminService = new AdminService();
 
-export const getDashboard = (_req: Request, res: Response) => {
-  const dashboard = adminService.getDashboard();
-  res.json(dashboard);
+export const getDashboard = async (_req: Request, res: Response) => {
+  try {
+    const dashboard = await adminService.getDashboard();
+    res.json(dashboard);
+  } catch (error) {
+    res.status(500).json({
+      message: error instanceof Error ? error.message : "Error fetching dashboard",
+    });
+  }
+};
+
+export const getStats = async (_req: Request, res: Response) => {
+  try {
+    const stats = await adminService.getStats();
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({
+      message: error instanceof Error ? error.message : "Error fetching stats",
+    });
+  }
 };
 
 export const downloadTemplate = (_req: Request, res: Response) => {

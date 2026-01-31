@@ -13,8 +13,107 @@ export interface ProductImportData {
 }
 
 export class AdminService {
-  getDashboard() {
-    return { title: "Admin Dashboard", message: "Welcome to admin panel" };
+  async getDashboard() {
+    const totalUsers = await prisma.user.count();
+    const totalProducts = await prisma.product.count();
+    const totalOrders = await prisma.order.count();
+    
+    const orders = await prisma.order.findMany({
+      include: {
+        orderItems: true,
+      },
+    });
+    
+    const totalRevenue = orders.reduce((sum, order) => {
+      return sum + order.orderItems.reduce((itemSum, item) => {
+        return itemSum + (item.unit_price * item.quantity);
+      }, 0);
+    }, 0);
+
+    const monthlySales = await this.getMonthlySales();
+
+    return {
+      totalUsers,
+      totalProducts,
+      totalOrders,
+      totalRevenue,
+      monthlySales,
+    };
+  }
+
+  private async getMonthlySales() {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const orders = await prisma.order.findMany({
+      where: {
+        created_at: {
+          gte: sixMonthsAgo,
+        },
+      },
+      include: {
+        orderItems: true,
+      },
+      orderBy: {
+        created_at: 'asc',
+      },
+    });
+
+    const monthlyData: { [key: string]: number } = {};
+    
+    for (let i = 0; i < 6; i++) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = d.toLocaleString('en-US', { month: 'short' });
+      monthlyData[key] = 0;
+    }
+
+    orders.forEach(order => {
+      const month = new Date(order.created_at).toLocaleString('en-US', { month: 'short' });
+      const orderTotal = order.orderItems.reduce((sum, item) => {
+        return sum + (item.unit_price * item.quantity);
+      }, 0);
+      
+      if (monthlyData[month] !== undefined) {
+        monthlyData[month] += orderTotal;
+      }
+    });
+
+    return Object.entries(monthlyData)
+      .map(([month, sales]) => ({ month, sales }))
+      .reverse();
+  }
+
+  async getStats() {
+    const totalProducts = await prisma.product.count();
+    const totalOrders = await prisma.order.count();
+    
+    const orders = await prisma.order.findMany({
+      include: {
+        orderItems: true,
+      },
+    });
+    
+    const totalRevenue = orders.reduce((sum, order) => {
+      return sum + order.orderItems.reduce((itemSum, item) => {
+        return itemSum + (item.unit_price * item.quantity);
+      }, 0);
+    }, 0);
+
+    const activeNow = await prisma.user.count({
+      where: {
+        updated_at: {
+          gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        },
+      },
+    });
+
+    return {
+      totalRevenue,
+      totalProducts,
+      totalSales: totalOrders,
+      activeNow,
+    };
   }
 
   generateTemplateCSV() {

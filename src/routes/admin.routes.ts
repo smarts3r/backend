@@ -11,6 +11,7 @@ import {
   downloadTemplate,
   exportProducts,
   getDashboard,
+  getStats,
   importProducts,
 } from "../controllers/admin.controller";
 import {
@@ -57,6 +58,8 @@ router.use(authorizeRoles("ADMIN"));
  *         description: Dashboard statistics
  */
 router.get("/dashboard", getDashboard);
+
+router.get("/stats", getStats);
 
 /**
  * @swagger
