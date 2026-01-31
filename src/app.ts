@@ -1,8 +1,8 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
-// import helmet from 'helmet';
+import helmet from 'helmet';
 import compression from 'compression';
 
-// import rateLimit from 'express-rate-limit';
+import rateLimit from 'express-rate-limit';
 
 import cookieParser from 'cookie-parser';
 import path from 'path';
@@ -19,7 +19,7 @@ import adminRoutes from './routes/admin.routes';
 import { categoryRouter } from './routes/categories.routes';
 import healthRoutes from './routes/health.routes';
 import checkoutRoutes from './routes/checkout.routes';
-import { corsMiddleware } from './middlewares/corsMiddelware';
+import { corsMiddleware } from './middlewares/corsMiddleware';
 
 const app: Application = express();
 
@@ -33,28 +33,31 @@ if (!isVercel) {
 
 app.use(corsMiddleware());
 
-// app.use(helmet({
-//   contentSecurityPolicy: {
-//     directives: {
-//       defaultSrc: ["'self'"],
-//       scriptSrc: ["'self'", "'unsafe-inline'"],
-//       styleSrc: ["'self'", "'unsafe-inline'"],
-//       imgSrc: ["'self'", "data:"],
-//     },
-//   },
-// }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:"],
+    },
+  },
+}));
 
-// const limiter = rateLimit({
-//   windowMs: 15 * 60 * 1000,
-//   max: 100,
-//   message: {
-//     success: false,
-//     message: 'Too many requests from this IP, please try again later.',
-//   },
-//   standardHeaders: true,
-//   legacyHeaders: false,
-// });
-// app.use(limiter);
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: {
+    success: false,
+    message: 'Too many requests from this IP, please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+if (process.env.NODE_ENV == "production") {
+  app.use(limiter);
+}
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
