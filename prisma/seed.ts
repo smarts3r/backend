@@ -8,12 +8,14 @@ import { hashPassword } from "../src/utils/authUtilities.ts";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function seedDatabase() {
-  console.log("🌱 Starting database seeding...");
+const isProduction = process.env.NODE_ENV === "production";
 
-  /* -------------------- ADMIN USER -------------------- */
+async function seedDatabase() {
+  console.log(`🌱 Starting database seeding... (ENV: ${process.env.NODE_ENV || "development"})`);
+
+  /* -------------------- ADMIN USER (ALWAYS) -------------------- */
   const adminEmail = "dev@email.com";
-  const adminPassword = "dev123";
+  const adminPassword = "Dev123";
 
   const existingAdmin = await prisma.user.findFirst({
     where: { email: adminEmail },
@@ -35,7 +37,18 @@ async function seedDatabase() {
     console.log("ℹ️ Admin already exists");
   }
 
-  /* -------------------- CATEGORIES -------------------- */
+  /* -------------------- SKIP CATEGORIES & PRODUCTS IN PRODUCTION -------------------- */
+  if (isProduction) {
+    console.log("🏭 Production mode: Skipping categories and products seeding");
+    
+    const userCount = await prisma.user.count();
+    console.log("📊 Final DB state:");
+    console.log(`- Users: ${userCount}`);
+    console.log("🎉 Seeding completed successfully (Production - Admin only)");
+    return;
+  }
+
+  /* -------------------- CATEGORIES (DEVELOPMENT ONLY) -------------------- */
   console.log("📦 Seeding categories...");
 
   const categoriesPath = path.join(__dirname, "../public/categories.json");
@@ -54,7 +67,7 @@ async function seedDatabase() {
 
   console.log("✅ Categories seeded:", categoryMap);
 
-  /* -------------------- PRODUCTS -------------------- */
+  /* -------------------- PRODUCTS (DEVELOPMENT ONLY) -------------------- */
   console.log("🛒 Seeding products...");
 
   const productsPath = path.join(__dirname, "../public/products.json");

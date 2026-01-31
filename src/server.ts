@@ -3,13 +3,20 @@ import { prisma } from './lib/prisma';
 
 const PORT = process.env.PORT || 3000;
 
+const adminEmail = "dev@email.com";
+const adminPassword = "Dev123";
+
 const startServer = async () => {
   try {
     await prisma.$connect();
     console.log('Connected to database');
 
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`Server running on port http://localhost:${PORT}`);
+      console.log(`Server Admin email is : dev@email.com`);
+      console.log(`Server Password is : Dev123`);
+
+
     });
   } catch (error) {
     console.error('Failed to start server:', error);
