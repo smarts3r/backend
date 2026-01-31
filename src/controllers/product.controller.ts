@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
-import { ProductService } from "../services/product.service";
+import { CachedProductService } from "../services/cached-product.service";
 
-const productService = new ProductService();
+const productService = new CachedProductService();
 
 export const getAllProducts = async (_req: Request, res: Response) => {
   try {
