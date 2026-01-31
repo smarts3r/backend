@@ -1,7 +1,9 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
-import helmet from 'helmet';
+// import helmet from 'helmet';
 import compression from 'compression';
-import rateLimit from 'express-rate-limit';
+
+// import rateLimit from 'express-rate-limit';
+
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import fs from 'fs';
@@ -9,7 +11,6 @@ import fs from 'fs';
 import { logger } from './utils/logger';
 import { requestLogger } from './middlewares/requestLogger.middleware';
 import { setupSwagger } from './docs/swagger';
-import { corsMiddleware } from './middlewares/corsMiddelwate';
 
 import productRoutes from './routes/products.route';
 import authRoutes from './routes/auth.routes';
@@ -18,6 +19,7 @@ import adminRoutes from './routes/admin.routes';
 import { categoryRouter } from './routes/categories.routes';
 import healthRoutes from './routes/health.routes';
 import checkoutRoutes from './routes/checkout.routes';
+import { corsMiddleware } from './middlewares/corsMiddelware';
 
 const app: Application = express();
 
@@ -31,28 +33,28 @@ if (!isVercel) {
 
 app.use(corsMiddleware());
 
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:"],
-    },
-  },
-}));
+// app.use(helmet({
+//   contentSecurityPolicy: {
+//     directives: {
+//       defaultSrc: ["'self'"],
+//       scriptSrc: ["'self'", "'unsafe-inline'"],
+//       styleSrc: ["'self'", "'unsafe-inline'"],
+//       imgSrc: ["'self'", "data:"],
+//     },
+//   },
+// }));
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: {
-    success: false,
-    message: 'Too many requests from this IP, please try again later.',
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use(limiter);
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000,
+//   max: 100,
+//   message: {
+//     success: false,
+//     message: 'Too many requests from this IP, please try again later.',
+//   },
+//   standardHeaders: true,
+//   legacyHeaders: false,
+// });
+// app.use(limiter);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
