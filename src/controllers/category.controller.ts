@@ -5,7 +5,6 @@ const categoryService = new CategoryService();
 
 export const getCategories = async (_req: Request, res: Response) => {
   try {
-    console.log("DEBUG: getCategories controller called");
     const categories = await categoryService.getAllCategories();
     res.json(categories);
   } catch (error) {
