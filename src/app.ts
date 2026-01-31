@@ -9,6 +9,7 @@ import fs from 'fs';
 import { logger } from './utils/logger';
 import { requestLogger } from './middlewares/requestLogger.middleware';
 import { setupSwagger } from './docs/swagger';
+import { corsMiddleware } from './middlewares/corsMiddelwate';
 
 import productRoutes from './routes/products.route';
 import authRoutes from './routes/auth.routes';
@@ -20,6 +21,11 @@ import checkoutRoutes from './routes/checkout.routes';
 
 const app: Application = express();
 
+app.use((req, res, next) => {
+  console.log(`DEBUG: Incoming request: ${req.method} ${req.url}`);
+  next();
+});
+
 const isVercel = process.env.VERCEL === '1';
 if (!isVercel) {
   const logsDir = path.join(process.cwd(), 'logs');
@@ -27,6 +33,8 @@ if (!isVercel) {
     fs.mkdirSync(logsDir, { recursive: true });
   }
 }
+
+app.use(corsMiddleware());
 
 app.use(helmet({
   contentSecurityPolicy: {

@@ -8,9 +8,11 @@ dotenv.config();
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
+  console.error("DEBUG: DATABASE_URL is missing!");
   throw new Error("DATABASE_URL is not defined in environment variables");
 }
 
+console.log("DEBUG: Prisma connecting with string starting with:", connectionString.substring(0, 15) + "...");
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 

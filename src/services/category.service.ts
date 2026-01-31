@@ -11,6 +11,7 @@ export interface UpdateCategoryData {
 export class CategoryService {
   async getAllCategories() {
     try {
+      console.log("DEBUG: CategoryService.getAllCategories called");
       const categories = await prisma.category.findMany({
         include: {
           products: {
