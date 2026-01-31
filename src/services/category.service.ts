@@ -11,8 +11,24 @@ export interface UpdateCategoryData {
 export class CategoryService {
   async getAllCategories() {
     try {
-      const categories = await prisma.category.findMany();
-      return categories;
+      const categories = await prisma.category.findMany({
+        include: {
+          products: {
+            take: 10,
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        }
+      });
+
+      // Format the response to match the required structure
+      return categories.map(category => ({
+        id: category.id,
+        name: category.name,
+        products: category.products
+      }));
     } catch (error) {
       console.error("Error fetching categories:", error);
       throw new Error("Error fetching categories");

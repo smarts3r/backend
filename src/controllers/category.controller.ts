@@ -8,10 +8,8 @@ export const getCategories = async (_req: Request, res: Response) => {
     const categories = await categoryService.getAllCategories();
     res.json(categories);
   } catch (error) {
-    res.status(500).json({
-      message:
-        error instanceof Error ? error.message : "Error fetching categories",
-    });
+    console.error('Error in getCategories controller:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 

@@ -1,38 +1,20 @@
 import app from './app';
-import { logger } from './utils/logger';
+import { prisma } from './lib/prisma';
 
-const PORT = parseInt(process.env.PORT || '3000', 10);
-const HOST = process.env.HOST || 'localhost';
+const PORT = process.env.PORT || 3000;
 
-const server = app.listen(PORT, HOST, () => {
-  logger.info(`Server running on http://${HOST}:${PORT}`);
-  logger.info(`API Documentation available at http://${HOST}:${PORT}/api-docs`);
-});
+const startServer = async () => {
+  try {
+    await prisma.$connect();
+    console.log('Connected to database');
 
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    logger.info('Process terminated');
-  });
-});
-
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  server.close(() => {
-    logger.info('Process terminated');
-  });
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  server.close(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
     process.exit(1);
-  });
-});
+  }
+};
 
-process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception:', error);
-  process.exit(1);
-});
-
-export default server;
+startServer().catch(console.error);

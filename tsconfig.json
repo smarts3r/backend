@@ -24,9 +24,6 @@
     "paths": {
       "@/*": [
         "./src/*"
-      ],
-      "@smarts3r/shared": [
-        "../../packages/shared/src"
       ]
     }
   },

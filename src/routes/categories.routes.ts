@@ -12,38 +12,14 @@ import {
 import {
   validateCreateCategory,
   validateIdParam,
-  validatePagination,
   validateUpdateCategory,
 } from "@/middlewares/validationMiddleware";
 
 const router = Router();
 
-/**
- * @swagger
- * tags:
- *   name: Categories
- *   description: Category management
- */
-
-/**
- * @swagger
- * /api/categories:
- *   get:
- *     summary: Get all categories
- *     tags: [Categories]
- *     responses:
- *       200:
- *         description: List of categories
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Category'
- *       500:
- *         description: Server error
- */
-router.get("/", validatePagination, getCategories);
+// GET /api/categories - Returns categories with up to 10 products each
+// No authentication required for this endpoint
+router.get("/", getCategories);
 
 /**
  * @swagger
@@ -141,48 +117,4 @@ router.put("/:id", authenticateToken, authorizeRoles("ADMIN"), validateIdParam, 
  */
 router.delete("/:id", authenticateToken, authorizeRoles("ADMIN"), validateIdParam, deleteCategory);
 
-/**
- * @swagger
- * components:
- *   schemas:
- *     Category:
- *       type: object
- *       properties:
- *         id:
- *           type: integer
- *           example: 1
- *         name:
- *           type: string
- *           example: Electronics
- *         description:
- *           type: string
- *           example: Devices and gadgets
- *         createdAt:
- *           type: string
- *           format: date-time
- *         updatedAt:
- *           type: string
- *           format: date-time
- *     CreateCategoryInput:
- *       type: object
- *       required:
- *         - name
- *       properties:
- *         name:
- *           type: string
- *           example: Electronics
- *         description:
- *           type: string
- *           example: Devices and gadgets
- *     UpdateCategoryInput:
- *       type: object
- *       properties:
- *         name:
- *           type: string
- *           example: Electronics
- *         description:
- *           type: string
- *           example: Devices and gadgets
- */
-
-export default router;
+export { router as categoryRouter };
