@@ -1,4 +1,19 @@
 // test/setup.ts
+
+// Mock cloudinary first before importing app
+jest.mock('cloudinary', () => ({
+  v2: {
+    config: jest.fn(),
+    uploader: {
+      upload_stream: jest.fn(),
+      upload: jest.fn().mockResolvedValue({
+        secure_url: 'https://example.com/image.jpg',
+        public_id: 'test_image',
+      }),
+    },
+  },
+}));
+
 import { jest } from '@jest/globals';
 
 // Mock Prisma Client
@@ -7,13 +22,16 @@ jest.mock('@prisma/client', () => {
     user: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      deleteMany: jest.fn(),
     },
     product: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
+      count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -21,6 +39,7 @@ jest.mock('@prisma/client', () => {
     category: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -28,6 +47,7 @@ jest.mock('@prisma/client', () => {
     order: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -35,13 +55,16 @@ jest.mock('@prisma/client', () => {
     cart: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      deleteMany: jest.fn(),
     },
     wishlist: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -69,6 +92,7 @@ jest.mock('jsonwebtoken', () => ({
 // Mock cloudinary
 jest.mock('cloudinary', () => ({
   v2: {
+    config: jest.fn(),
     uploader: {
       upload_stream: jest.fn(),
       upload: jest.fn().mockResolvedValue({
@@ -76,6 +100,16 @@ jest.mock('cloudinary', () => ({
         public_id: 'test_image',
       }),
     },
+  },
+}));
+
+// Mock logger
+jest.mock('../src/utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
   },
 }));
 

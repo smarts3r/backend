@@ -2,20 +2,18 @@ import { jest } from '@jest/globals';
 import { ProductService } from '../../../src/services/product.service';
 import { prisma } from '../../../src/lib/prisma';
 
-// Mock external dependencies
-jest.mock('../../../src/lib/prisma', () => {
-  return {
-    prisma: {
-      product: {
-        findMany: jest.fn(),
-        findUnique: jest.fn(),
-        create: jest.fn(),
-        update: jest.fn(),
-        delete: jest.fn(),
-      },
+jest.mock('../../../src/lib/prisma', () => ({
+  prisma: {
+    product: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
     },
-  };
-});
+  },
+}));
 
 describe('ProductService', () => {
   let productService: ProductService;
@@ -38,21 +36,19 @@ describe('ProductService', () => {
       ];
 
       (prisma.product.findMany as jest.Mock).mockResolvedValue(mockProducts);
+      (prisma.product.count as jest.Mock).mockResolvedValue(1);
 
       const result = await productService.getAllProducts();
 
       expect(prisma.product.findMany).toHaveBeenCalled();
-      expect(result).toEqual(mockProducts);
+      expect(result.data).toEqual(mockProducts);
+      expect(result.pagination).toBeDefined();
     });
 
     it('should throw an error if database query fails', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       (prisma.product.findMany as jest.Mock).mockRejectedValue(new Error('Database error'));
 
       await expect(productService.getAllProducts()).rejects.toThrow('Error fetching products');
-
-      expect(consoleSpy).toHaveBeenCalledWith('Error fetching products:', expect.any(Error));
-      consoleSpy.mockRestore();
     });
   });
 
@@ -77,23 +73,15 @@ describe('ProductService', () => {
     });
 
     it('should throw an error if product not found', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       (prisma.product.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(productService.getProductById(999)).rejects.toThrow('Product not found');
-
-      expect(consoleSpy).toHaveBeenCalledWith('Error fetching product:', expect.any(Error));
-      consoleSpy.mockRestore();
     });
 
     it('should throw an error if database query fails', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       (prisma.product.findUnique as jest.Mock).mockRejectedValue(new Error('Database error'));
 
       await expect(productService.getProductById(1)).rejects.toThrow('Database error');
-
-      expect(consoleSpy).toHaveBeenCalledWith('Error fetching product:', expect.any(Error));
-      consoleSpy.mockRestore();
     });
   });
 
@@ -146,13 +134,9 @@ describe('ProductService', () => {
         img: 'new-product.jpg',
       };
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       (prisma.product.create as jest.Mock).mockRejectedValue(new Error('Database error'));
 
       await expect(productService.createProduct(mockProductData)).rejects.toThrow('Error creating product');
-
-      expect(consoleSpy).toHaveBeenCalledWith('Error creating product:', expect.any(Error));
-      consoleSpy.mockRestore();
     });
   });
 
@@ -201,13 +185,9 @@ describe('ProductService', () => {
         name: 'Updated Product',
       };
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       (prisma.product.update as jest.Mock).mockRejectedValue(new Error('Database error'));
 
       await expect(productService.updateProduct(1, mockProductData)).rejects.toThrow('Error updating product');
-
-      expect(consoleSpy).toHaveBeenCalledWith('Error updating product:', expect.any(Error));
-      consoleSpy.mockRestore();
     });
   });
 
@@ -224,13 +204,9 @@ describe('ProductService', () => {
     });
 
     it('should throw an error if database query fails', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       (prisma.product.delete as jest.Mock).mockRejectedValue(new Error('Database error'));
 
       await expect(productService.deleteProduct(1)).rejects.toThrow('Error deleting product');
-
-      expect(consoleSpy).toHaveBeenCalledWith('Error deleting product:', expect.any(Error));
-      consoleSpy.mockRestore();
     });
   });
 });

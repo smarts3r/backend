@@ -3,6 +3,7 @@ import { validateBody, validateParams, validateQuery } from '../middlewares/vali
 import { schemas } from '../validators';
 import { logger } from '../utils/logger';
 import { ProductService } from '../services/product.service';
+import { authenticateToken, authorizeRoles } from '../middlewares/authMiddleware';
 
 const router = Router();
 const productService = new ProductService();
@@ -166,7 +167,7 @@ router.get('/:id', validateParams(schemas.productIdSchema), async (req: Request,
  *                 data:
  *                   $ref: '#/components/schemas/Product'
  */
-router.post('/', validateBody(schemas.createProductSchema), async (req: Request, res: Response) => {
+router.post('/', authenticateToken, authorizeRoles("ADMIN"), validateBody(schemas.createProductSchema), async (req: Request, res: Response) => {
   try {
     const productData = req.body;
 
@@ -243,6 +244,8 @@ router.post('/', validateBody(schemas.createProductSchema), async (req: Request,
  *                   $ref: '#/components/schemas/Product'
  */
 router.put('/:id',
+  authenticateToken,
+  authorizeRoles("ADMIN"),
   validateParams(schemas.productIdSchema),
   validateBody(schemas.updateProductSchema),
   async (req: Request, res: Response) => {
@@ -296,7 +299,7 @@ router.put('/:id',
  *                   type: string
  *                   example: "Product deleted successfully"
  */
-router.delete('/:id', validateParams(schemas.productIdSchema), async (req: Request, res: Response) => {
+router.delete('/:id', authenticateToken, authorizeRoles("ADMIN"), validateParams(schemas.productIdSchema), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const productId = parseInt(Array.isArray(id) ? id[0] : id, 10);

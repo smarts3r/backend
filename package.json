@@ -21,8 +21,7 @@
     "prisma:seed": "prisma db seed --schema=./prisma/schema.prisma",
     "prisma:studio": "prisma studio --schema=./prisma/schema.prisma",
     "prisma:reset": "prisma migrate reset --force --schema=./prisma/schema.prisma",
-    "prepare": "prisma generate",
-    "postinstall": "prisma generate"
+    "prepare": "prisma generate"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts",
@@ -47,14 +46,14 @@
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "jest": "^30.2.0",
-    "prisma": "^6.2.1",
+    "prisma": "^6.19.2",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.6",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@prisma/client": "^6.2.1",
+    "@prisma/client": "^6.19.2",
     "@smarts3r/shared": "workspace:*",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",

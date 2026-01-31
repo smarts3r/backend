@@ -14,6 +14,7 @@ enum Role {
 
 enum OrderStatus {
   PENDING
+  PAID
   PROCESSING
   SHIPPED
   DELIVERED
@@ -102,6 +103,8 @@ model Cart {
 
   user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
   product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, product_id])
 }
 
 model Wishlist {

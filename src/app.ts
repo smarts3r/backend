@@ -16,6 +16,7 @@ import userRoutes from './routes/user.routes';
 import adminRoutes from './routes/admin.routes';
 import categoryRoutes from './routes/categories.routes';
 import healthRoutes from './routes/health.routes';
+import checkoutRoutes from './routes/checkout.routes';
 
 const app: Application = express();
 
@@ -65,6 +66,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/checkout', checkoutRoutes);
 app.use('/api/health', healthRoutes);
 
 app.use((req: Request, res: Response) => {

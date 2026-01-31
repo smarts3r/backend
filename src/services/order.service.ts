@@ -202,8 +202,9 @@ export class OrderService {
         throw new Error("Order not found");
       }
 
-      const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
-        PENDING: ["PROCESSING", "CANCELLED"],
+      const allowedTransitions: Record<string, string[]> = {
+        PENDING: ["PROCESSING", "PAID", "CANCELLED"],
+        PAID: ["PROCESSING", "CANCELLED"],
         PROCESSING: ["SHIPPED", "CANCELLED"],
         SHIPPED: ["DELIVERED", "CANCELLED"],
         DELIVERED: [],
@@ -221,13 +222,16 @@ export class OrderService {
       }
 
       const data: any = {
-        status: finalStatus,
+        status: finalStatus as any,
         updated_at: new Date(),
       };
 
-      if (payment_status !== undefined)
+      if (payment_status !== undefined) {
         data.payment_status = String(payment_status).trim();
-      if (notes !== undefined) data.notes = String(notes).trim() || null;
+      }
+      if (notes !== undefined) {
+        data.notes = String(notes).trim() || null;
+      }
 
       if (cancelled_at) {
         const cancelDate = new Date(cancelled_at);

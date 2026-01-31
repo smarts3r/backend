@@ -817,35 +817,32 @@ export const addToCart = async (req: Request, res: Response) => {
             });
         }
 
-        const cartItem = await prisma.cart.upsert({
-            where: {
+        const existingCartItem = await prisma.cart.findFirst({
+            where: { user_id: userId, product_id: productId }
+        });
 
-                product_id_user_id: {
-                    user_id: userId,
-                    product_id: productId
-                }
-            },
-            update: {
-                quantity: {
-                    increment: quantity
-                },
-                updated_at: new Date()
-            },
-            create: {
-                user_id: userId,
-                product_id: productId,
-                quantity: quantity
-            },
-            include: {
-                product: {
-                    select: {
-                        name: true,
-                        img: true,
-                        price: true
+        let cartItem: any;
+
+        if (existingCartItem) {
+            cartItem = await prisma.cart.update({
+                where: { id: existingCartItem.id },
+                data: { quantity: { increment: quantity }, updated_at: new Date() },
+                include: {
+                    product: {
+                        select: { name: true, img: true, price: true }
                     }
                 }
-            }
-        });
+            });
+        } else {
+            cartItem = await prisma.cart.create({
+                data: { user_id: userId, product_id: productId, quantity },
+                include: {
+                    product: {
+                        select: { name: true, img: true, price: true }
+                    }
+                }
+            });
+        }
 
         return res.json({
             success: true,
@@ -1011,26 +1008,14 @@ export const toggleWishlist = async (req: Request, res: Response) => {
             });
         }
 
-        const existing = await prisma.wishlist.findUnique({
-            where: {
-
-                user_id_product_id: {
-                    user_id: userId,
-                    product_id: productId
-                }
-            }
+        const existing = await prisma.wishlist.findFirst({
+            where: { user_id: userId, product_id: productId }
         });
 
         if (existing) {
 
             await prisma.wishlist.delete({
-                where: {
-
-                    user_id_product_id: {
-                        user_id: userId,
-                        product_id: productId
-                    }
-                }
+                where: { id: existing.id }
             });
 
             return res.json({

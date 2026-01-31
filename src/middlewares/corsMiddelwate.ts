@@ -4,7 +4,7 @@ export const corsMiddleware = () => {
   return cors({
     origin:
       process.env.NODE_ENV === "production"
-        ? "https:
+        ? process.env.CORS_ORIGIN || "https://your-production-url.com"
         : true,
     credentials: true,
   });

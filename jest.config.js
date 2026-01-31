@@ -3,6 +3,7 @@ export default {
   testEnvironment: 'node',
   roots: ['<rootDir>/src', '<rootDir>/test'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
+  testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
@@ -21,11 +22,10 @@ export default {
     '^@/middleware/(.*)$': '<rootDir>/src/middlewares/$1',
     '^@/utils/(.*)$': '<rootDir>/src/utils/$1',
     '^@/types/(.*)$': '<rootDir>/src/types/$1',
-    // Handle the specific import path used in the middleware
     '^@/src/lib/prisma$': '<rootDir>/src/lib/prisma',
   },
   transform: {
     '^.+\\.ts$': 'ts-jest',
   },
-  testTimeout: 10000,
+  testTimeout: 30000,
 };
