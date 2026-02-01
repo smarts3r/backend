@@ -11,24 +11,28 @@ export class CacheService {
     const absolutePath = path.resolve(process.cwd(), dbPath);
     this.db = new Database(absolutePath);
 
+    // Ensure the database is ready before proceeding
     this.initDatabase();
   }
 
   private initDatabase(): void {
-    // Create cache table if it doesn't exist
-    this.db.run(`
-      CREATE TABLE IF NOT EXISTS cache (
-        key TEXT PRIMARY KEY,
-        value TEXT,
-        expires_at INTEGER,
-        created_at INTEGER DEFAULT (strftime('%s', 'now'))
-      )
-    `);
+    // Ensure the table exists - synchronous approach for constructor
+    this.db.serialize(() => {
+      // Create cache table if it doesn't exist
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS cache (
+          key TEXT PRIMARY KEY,
+          value TEXT,
+          expires_at INTEGER,
+          created_at INTEGER DEFAULT (strftime('%s', 'now'))
+        )
+      `);
 
-    // Create index on expires_at for efficient cleanup
-    this.db.run(`
-      CREATE INDEX IF NOT EXISTS idx_cache_expires ON cache (expires_at)
-    `);
+      // Create index on expires_at for efficient cleanup
+      this.db.run(`
+        CREATE INDEX IF NOT EXISTS idx_cache_expires ON cache (expires_at)
+      `);
+    });
 
     // Clean up expired entries periodically
     this.scheduleCleanup();

@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
-import { CategoryService } from "../services/category.service";
+import { CachedCategoryService } from "../services/cached-category.service";
 
-const categoryService = new CategoryService();
+const categoryService = new CachedCategoryService();
 
 export const getCategories = async (_req: Request, res: Response) => {
   try {

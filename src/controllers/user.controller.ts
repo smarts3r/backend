@@ -1,6 +1,7 @@
 
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
+import { CachedUserService } from "../services/cached-user.service";
 import { OrderStatus } from "@prisma/client";
 
 const generateOrderNumber = (): string => {
@@ -690,28 +691,13 @@ export const getOrderSummary = async (req: Request, res: Response) => {
     }
 };
 
+const cachedUserService = new CachedUserService();
+
 export const getUserProfile = async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user?.id;
 
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: {
-                id: true,
-                email: true,
-                username: true,
-                role: true,
-                created_at: true,
-                profile: true,
-                _count: {
-                    select: {
-                        orders: true,
-                        cart: true,
-                        wishlist: true
-                    }
-                }
-            }
-        });
+        const user = await cachedUserService.getUserProfile(userId);
 
         if (!user) {
             return res.status(404).json({
