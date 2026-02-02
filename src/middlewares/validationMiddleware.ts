@@ -205,8 +205,16 @@ export const validateCreateOrder = [
     .isInt({ min: 1, max: 99 })
     .withMessage("Quantity must be between 1 and 99 for each item"),
   body("shippingAddress")
-    .isObject()
-    .withMessage("Shipping address is required and must be an object"),
+    .custom((value) => {
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return true;
+      }
+      if (typeof value === 'object' && value !== null) {
+        return true;
+      }
+      return false;
+    })
+    .withMessage("Shipping address is required and must be a string or an object"),
   body("phoneNumber")
     .isString()
     .isLength({ min: 8, max: 20 })
