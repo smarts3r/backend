@@ -4,7 +4,7 @@
   "main": "src/server.ts",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "npm run clean && npx dotenv-cli -e .env -- prisma generate --schema=./prisma/schema.prisma && tsc",
+    "build": "npm run clean && npm run setup-db && npx dotenv-cli -e .env -- prisma generate --schema=./prisma/schema.prisma && tsc",
     "start": "node dist/server.js",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
@@ -14,13 +14,14 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "prisma:generate": "npx dotenv-cli -e .env -- prisma generate --schema=./prisma/schema.prisma",
-    "prisma:migrate": "npx dotenv-cli -e .env -- prisma migrate dev --name init --schema=./prisma/schema.prisma",
-    "prisma:migrate:prod": "npx dotenv-cli -e .env -- prisma migrate deploy --schema=./prisma/schema.prisma",
-    "prisma:seed": "npx dotenv-cli -e .env -- prisma db seed --schema=./prisma/schema.prisma",
-    "prisma:studio": "npx dotenv-cli -e .env -- prisma studio --schema=./prisma/schema.prisma",
-    "prisma:reset": "npx dotenv-cli -e .env -- prisma migrate reset --force --schema=./prisma/schema.prisma",
-    "prepare": "npx dotenv-cli -e .env -- prisma generate --schema=./prisma/schema.prisma"
+    "setup-db": "tsx scripts/setup-database.ts",
+    "prisma:generate": "npm run setup-db && npx dotenv-cli -e .env -- prisma generate --schema=./prisma/schema.prisma",
+    "prisma:migrate": "npm run setup-db && npx dotenv-cli -e .env -- prisma migrate dev --name init --schema=./prisma/schema.prisma",
+    "prisma:migrate:prod": "npm run setup-db && npx dotenv-cli -e .env -- prisma migrate deploy --schema=./prisma/schema.prisma",
+    "prisma:seed": "npm run setup-db && npx dotenv-cli -e .env -- prisma db seed --schema=./prisma/schema.prisma",
+    "prisma:studio": "npm run setup-db && npx dotenv-cli -e .env -- prisma studio --schema=./prisma/schema.prisma",
+    "prisma:reset": "npm run setup-db && npx dotenv-cli -e .env -- prisma migrate reset --force --schema=./prisma/schema.prisma",
+    "prepare": "npm run setup-db && npx dotenv-cli -e .env -- prisma generate --schema=./prisma/schema.prisma"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts",

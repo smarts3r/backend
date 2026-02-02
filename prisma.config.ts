@@ -1,11 +1,19 @@
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
+// Use the DATABASE_URL that will be set by our setup script
 export default defineConfig({
-    schema: "prisma/schema.prisma",
-    datasource: {
-        url: env("DATABASE_URL"),
+  schema: "prisma/schema.prisma",
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL!,
     },
-    migrations: {
-        seed: "tsx prisma/seed.ts",
+  },
+  generators: {
+    client: {
+      provider: "prisma-client-js",
     },
+  },
+  migrations: {
+    seed: "tsx prisma/seed.ts",
+  },
 });

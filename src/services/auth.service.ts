@@ -72,13 +72,40 @@ export class AuthService {
             ? (role as Role)
             : Role.USER,
       },
-      select: { id: true },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        role: true,
+        created_at: true,
+        updated_at: true,
+      },
     });
 
+    const accessToken = generateAccessToken({
+      id: user.id.toString(),
+      role: user.role,
+    });
+    const refreshToken = generateRefreshToken({
+      id: user.id.toString(),
+      role: user.role,
+    });
+
+    const authUser: AuthUser = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.username || undefined,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+    };
+
+    setSession(user.id.toString(), authUser);
+
     return {
-      success: true,
-      message: "User registered successfully",
-      userId: user.id,
+      user: authUser,
+      accessToken,
+      refreshToken,
     };
   }
 

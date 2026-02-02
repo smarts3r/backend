@@ -51,10 +51,20 @@ export class ProductService {
         orderBy: {
           [sortBy]: sortOrder,
         },
+        include: {
+          category: true,
+        },
       });
 
+      // Transform products to include category name as string
+      const transformedProducts = products.map(product => ({
+        ...product,
+        category: product.category.name,
+        category_id: product.category_id,
+      }));
+
       return {
-        data: products,
+        data: transformedProducts,
         pagination: {
           page,
           limit,
@@ -72,6 +82,9 @@ export class ProductService {
     try {
       const product = await prisma.product.findUnique({
         where: { id },
+        include: {
+          category: true,
+        },
       });
 
       if (!product) {
@@ -79,7 +92,12 @@ export class ProductService {
         throw new Error("Product not found");
       }
 
-      return product;
+      // Transform product to include category name as string
+      return {
+        ...product,
+        category: product.category.name,
+        category_id: product.category_id,
+      };
     } catch (error) {
       logger.error("Error fetching product:", error);
       throw error instanceof Error
