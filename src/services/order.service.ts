@@ -1,6 +1,7 @@
 import { OrderStatus } from "@prisma/client";
 import { Parser } from "json2csv";
 import { prisma } from "../lib/prisma";
+import { emitOrderStatusChange } from "../socket";
 
 const ALLOWED_ORDER_SORT_FIELDS = [
   "created_at",
@@ -89,34 +90,65 @@ export class OrderService {
           take,
           skip,
           orderBy: { [safeSortBy]: safeSortDir },
-          select: {
-            id: true,
-            order_number: true,
-            total_amount: true,
-            status: true,
-            payment_status: true,
-            payment_method: true,
-            created_at: true,
-            updated_at: true,
-            cancelled_at: true,
+          include: {
             user: {
               select: {
                 id: true,
                 email: true,
                 username: true,
+                profile: {
+                  select: {
+                    first_name: true,
+                    last_name: true,
+                  },
+                },
               },
             },
-            _count: {
-              select: { orderItems: true },
+            orderItems: {
+              include: {
+                product: {
+                  select: {
+                    id: true,
+                    name: true,
+                    img: true,
+                    price: true,
+                  },
+                },
+              },
             },
           },
         }),
         prisma.order.count({ where }),
       ]);
 
+      // Transform orders to match frontend AdminOrder interface
+      const transformedOrders = orders.map((order) => ({
+        id: order.id,
+        user_id: order.user_id,
+        order_number: order.order_number,
+        total: order.total_amount,
+        total_amount: order.total_amount,
+        status: order.status.toLowerCase() as any,
+        payment_status: order.payment_status,
+        payment_method: order.payment_method,
+        created_at: order.created_at,
+        updated_at: order.updated_at,
+        cancelled_at: order.cancelled_at,
+        customerName: order.user?.profile?.first_name 
+          ? `${order.user.profile.first_name} ${order.user.profile.last_name || ''}`.trim()
+          : order.user?.username || `User #${order.user_id}`,
+        customerEmail: order.user?.email || '',
+        orderItems: order.orderItems?.map((item) => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          product: item.product,
+        })),
+      }));
+
       return {
         success: true,
-        data: orders,
+        data: transformedOrders,
         pagination: {
           page: pageNum,
           limit: take,
@@ -249,6 +281,11 @@ export class OrderService {
           user: { select: { email: true, username: true } },
         },
       });
+
+      // Emit socket event if status changed
+      if (status && status !== current.status) {
+        emitOrderStatusChange(id, finalStatus);
+      }
 
       return {
         success: true,

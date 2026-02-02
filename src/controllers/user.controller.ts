@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import { CachedUserService } from "../services/cached-user.service";
 import { OrderStatus } from "@prisma/client";
+import { emitNewOrder } from "../socket";
 
 const generateOrderNumber = (): string => {
     const timestamp = Date.now();
@@ -341,6 +342,20 @@ export const createOrder = async (req: Request, res: Response) => {
             });
 
             return newOrder;
+        });
+
+        // Emit socket event for real-time admin updates
+        emitNewOrder({
+            id: order.id,
+            user_id: order.user_id,
+            order_number: order.order_number,
+            total_amount: order.total_amount,
+            status: order.status,
+            payment_status: order.payment_status,
+            payment_method: order.payment_method,
+            created_at: order.created_at,
+            user: order.user,
+            orderItems: order.orderItems,
         });
 
         return res.status(201).json({
