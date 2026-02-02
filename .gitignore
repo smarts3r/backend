@@ -8,3 +8,6 @@ dist/
 .vercel
 .env*.local
 .env*.prod
+
+*.db
+bun.l

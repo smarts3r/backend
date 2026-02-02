@@ -1,5 +1,6 @@
 
-import { Router } from "express";
+import { Router, Request, Response } from "express";
+import multer from "multer";
 import {
 
     getMyOrders,
@@ -20,7 +21,8 @@ import {
     clearCart,
 
     getMyWishlist,
-    toggleWishlist
+    toggleWishlist,
+    postUserProfile
 } from "../controllers/user.controller";
 import { authenticateToken } from "@/middlewares/authMiddleware";
 import {
@@ -29,10 +31,21 @@ import {
     validateCreateOrder,
     validateAddToCart,
     validateUpdateCartItem,
-    validateToggleWishlist
+    validateToggleWishlist,
+    validateUpdateProfile
 } from "@/middlewares/validationMiddleware";
+import type { ImageUploadResult } from "../types/imageUploadResult.types";
+import { uploadImage } from "../utils/uploadImages";
 
 const router = Router();
+
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+});
 
 router.use(authenticateToken);
 
@@ -356,6 +369,115 @@ router.get("/orders/summary", getOrderSummary);
  *                   $ref: '#/components/schemas/UserProfile'
  */
 router.get("/profile", getUserProfile);
+
+/**
+ * @swagger
+ * /api/user/profile:
+ *   post:
+ *     summary: Update user profile
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               first_name:
+ *                 type: string
+ *               last_name:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               state:
+ *                 type: string
+ *               zip_code:
+ *                 type: string
+ *               country:
+ *                 type: string
+ *               img:
+ *                 type: string
+ *               username:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ */
+router.post("/profile", validateUpdateProfile, postUserProfile);
+
+/**
+ * @swagger
+ * /api/user/upload:
+ *   post:
+ *     summary: Upload a user profile image
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Image uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 url:
+ *                   type: string
+ *                 public_id:
+ *                   type: string
+ */
+router.post(
+  "/upload",
+  upload.single("image"),
+  async (req: Request, res: Response) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({
+          message: "No file uploaded",
+        });
+      }
+
+      const result: ImageUploadResult | null = await uploadImage(file.buffer);
+
+      if (!result) {
+        return res.status(500).json({
+          message: "Failed to upload image",
+        });
+      }
+
+      return res.status(200).json({
+        message: "Image uploaded successfully",
+        url: result.secure_url,
+        public_id: result.public_id,
+      });
+    } catch (error: unknown) {
+      console.error("[UPLOAD ERROR]:", error);
+
+      return res.status(500).json({
+        message: "Internal server error during upload",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  },
+);
 
 /**
  * @swagger

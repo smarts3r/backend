@@ -53,14 +53,22 @@ const parseAddress = (addressString: string): any => {
 
 export const getMyOrders = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user?.id;
+        const user = (req as any).user;
+        const userId = user?.id;
+        const userRole = user?.role;
+
         const { page = "1", limit = "10", status } = req.query;
 
         const pageNum = Math.max(1, Number(page));
         const take = Math.min(50, Math.max(1, Number(limit)));
         const skip = (pageNum - 1) * take;
 
-        const where: any = { user_id: userId };
+        const where: any = {};
+        
+        // Only filter by user_id if not admin
+        if (userRole !== 'ADMIN') {
+            where.user_id = userId;
+        }
 
         if (status && Object.values(OrderStatus).includes(status as OrderStatus)) {
             where.status = status;
@@ -127,7 +135,10 @@ export const getMyOrders = async (req: Request, res: Response) => {
 
 export const getMyOrderById = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user?.id;
+        const user = (req as any).user;
+        const userId = user?.id;
+        const userRole = user?.role;
+
         const orderId = Number(req.params.id);
 
         if (!orderId || isNaN(orderId)) {
@@ -137,11 +148,13 @@ export const getMyOrderById = async (req: Request, res: Response) => {
             });
         }
 
+        const where: any = { id: orderId };
+        if (userRole !== 'ADMIN') {
+            where.user_id = userId;
+        }
+
         const order = await prisma.order.findFirst({
-            where: {
-                id: orderId,
-                user_id: userId
-            },
+            where,
             include: {
                 orderItems: {
                     include: {
@@ -716,6 +729,62 @@ export const getUserProfile = async (req: Request, res: Response) => {
         return res.status(500).json({
             success: false,
             message: "Failed to fetch user profile"
+        });
+    }
+};
+
+export const postUserProfile = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.id;
+        const {
+            first_name,
+            last_name,
+            img,
+            phone,
+            address,
+            city,
+            state,
+            zip_code,
+            country,
+            username
+        } = req.body;
+
+        const profileData: any = {};
+        if (first_name !== undefined) profileData.first_name = first_name;
+        if (last_name !== undefined) profileData.last_name = last_name;
+        if (img !== undefined) profileData.img = img;
+        if (phone !== undefined) profileData.phone = phone;
+        if (address !== undefined) profileData.address = address;
+        if (city !== undefined) profileData.city = city;
+        if (state !== undefined) profileData.state = state;
+        if (zip_code !== undefined) profileData.zip_code = zip_code;
+        if (country !== undefined) profileData.country = country;
+
+        const updateData: any = {};
+        if (username !== undefined) updateData.username = username;
+
+        if (Object.keys(profileData).length > 0) {
+            updateData.profile = {
+                upsert: {
+                    create: profileData,
+                    update: profileData
+                }
+            };
+        }
+
+        const updatedUser = await cachedUserService.updateUserProfile(userId, updateData);
+
+        return res.json({
+            success: true,
+            data: updatedUser,
+            message: "Profile updated successfully"
+        });
+
+    } catch (error) {
+        console.error("[postUserProfile] Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update user profile"
         });
     }
 };
