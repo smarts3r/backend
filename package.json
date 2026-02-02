@@ -16,11 +16,13 @@
     "test:coverage": "jest --coverage",
     "setup-db": "tsx scripts/setup-database.ts",
     "prisma:generate": "npm run setup-db && npx dotenv-cli -e .env -- prisma generate --schema=./prisma/schema.prisma",
-    "prisma:migrate": "npm run setup-db && npx dotenv-cli -e .env -- prisma migrate dev --name init --schema=./prisma/schema.prisma",
-    "prisma:migrate:prod": "npm run setup-db && npx dotenv-cli -e .env -- prisma migrate deploy --schema=./prisma/schema.prisma",
+    "prisma:migrate": "echo \"Note: Traditional migrate dev not supported with Prisma v7 adapters. Use 'npm run prisma:push' for development.\"",
+    "prisma:migrate:prod": "echo \"Note: Traditional migrate deploy not supported with Prisma v7 adapters. Use direct database management for production.\"",
     "prisma:seed": "npm run setup-db && npx dotenv-cli -e .env -- prisma db seed --schema=./prisma/schema.prisma",
     "prisma:studio": "npm run setup-db && npx dotenv-cli -e .env -- prisma studio --schema=./prisma/schema.prisma",
-    "prisma:reset": "npm run setup-db && npx dotenv-cli -e .env -- prisma migrate reset --force --schema=./prisma/schema.prisma",
+    "prisma:reset": "echo \"Note: Traditional reset not supported with Prisma v7 adapters. Use 'npm run prisma:push' instead.\"",
+    "prisma:push": "npx dotenv-cli -e .env -- tsx scripts/setup-database.ts && npx dotenv-cli -e .env -- prisma db push --schema=./prisma/schema.prisma",
+    "prisma:pull": "npx dotenv-cli -e .env -- prisma db pull --schema=./prisma/schema.prisma",
     "prepare": "npm run setup-db && npx dotenv-cli -e .env -- prisma generate --schema=./prisma/schema.prisma"
   },
   "prisma": {

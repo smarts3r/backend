@@ -77,6 +77,8 @@ function createPrismaSchema(databaseUrl: string): void {
   }
 
   // Create the new datasource based on the database type
+  // NOTE: For Prisma v7 with adapters, the URL is handled in prisma.config.ts
+  // and should not be in the schema file for most operations
   let datasourceBlock: string;
   if (isSQLite) {
     datasourceBlock = `datasource db {
