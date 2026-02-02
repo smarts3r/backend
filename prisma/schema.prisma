@@ -6,16 +6,6 @@ datasource db {
   provider = "postgresql"
 }
 
-
-
-
-
-
-
-
-
-
-
 enum Role {
   USER
   ADMIN
